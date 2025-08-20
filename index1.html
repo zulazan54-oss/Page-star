@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>صفحة مسلسل - نيتفلكس</title>
+
+  <!-- تحميل الخطوط -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal&display=swap" rel="stylesheet" />
+
+  <!-- أيقونات Font Awesome -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  />
+
+  <!-- preload لصورة البانر لتحسين العرض الأولي -->
+  <link rel="preload" as="image" href="https://iili.io/FZe3PZg.jpg" fetchpriority="high">
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Cairo', sans-serif;
+      background-color: #000;
+      color: #fff;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* تحسين لمس و حساسية الأزرار على الموبايل */
+    button, .thumbnail, .season-card {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .banner {
+      position: relative;
+      width: 100%;
+      height: 400px;
+      background-image: url('https://iili.io/FZe3PZg.jpg');
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      padding: 40px 60px 0 60px;
+      overflow: hidden;
+      will-change: transform;
+    }
+
+    .banner::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 450px;
+      height: 100%;
+      background: linear-gradient(to left, rgba(20,20,20,1), transparent);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .banner-content {
+      position: relative;
+      max-width: 600px;
+      z-index: 2;
+      text-align: right;
+      margin-top: auto;
+      padding-bottom: 10px;
+    }
+
+    .banner-title {
+      font-family: 'Luckiest Guy', cursive;
+      font-size: 1.3rem;
+      font-weight: normal;
+      margin: 0 0 6px 0;
+      text-shadow: 2px 2px 5px rgba(0,0,0,0.7);
+      color: #fff;
+    }
+
+    .banner-info-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      font-size: 0.7rem;
+      color: #bbb;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    .banner-info { white-space: nowrap; }
+
+    .banner-buttons { display: flex; gap: 10px; }
+
+    /* أزرار مع خط مباشر */
+    .banner-button {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-weight: bold;
+      font-size: 14px;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 140ms ease, color 140ms ease, transform 110ms ease;
+      border: none;
+      outline: none;
+    }
+
+    .banner-button i {
+      font-size: 0.85rem;
+      margin-left: 6px;
+    }
+
+    .banner-button:hover { filter: brightness(1.05); }
+    .banner-button:active { transform: scale(0.98); }
+
+    .btn-trailer { background-color: #1E90FF; color: white; border: none; }
+    .btn-trailer:hover { background-color: #1C86EE; }
+
+    .btn-list { background-color: transparent; color: white; border: 2px solid white; }
+    .btn-list:hover { background-color: white; color: black; }
+
+    .banner-description {
+      font-family: 'Tajawal', sans-serif;
+      font-size: 0.85rem;
+      line-height: 1.3;
+      max-height: none;
+      overflow: visible;
+      margin: 0;
+      white-space: normal;
+      text-align: right;
+      direction: rtl;
+    }
+
+    .summary-section {
+      max-width: 600px;
+      margin: 20px 60px 40px 60px;
+      color: #fff;
+      text-align: right;
+      direction: rtl;
+    }
+
+    .summary-title {
+      font-family: 'Cairo', sans-serif;
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: #1E90FF; /* اللون الأزرق */
+      margin-bottom: 12px;
+      text-align: right;
+      direction: rtl;
+    }
+
+    .thumbnails, .seasons-title { background-color: #000; }
+
+    .thumbnails {
+      display: flex;
+      gap: 15px;
+      padding: 20px 60px;
+      overflow-x: auto;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      will-change: transform;
+    }
+    .thumbnails::-webkit-scrollbar { display: none; }
+
+    .thumbnail {
+      flex: 0 0 auto;
+      width: 140px;
+      height: 80px;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+      outline: none !important;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      will-change: transform;
+    }
+
+    .thumbnail:focus, .thumbnail:active { outline: none !important; transform: scale(1.06); }
+
+    .thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      transition: transform 180ms ease;
+    }
+
+    .thumbnail:hover { transform: scale(1.05); box-shadow: 0 4px 16px rgba(255,255,255,0.3); }
+
+    .seasons-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 30px 60px 15px 60px;
+      padding: 10px 0;
+      text-align: right;
+      color: #fff;
+    }
+
+    .seasons-title .bars { color: #1E90FF; margin-left: 10px; }
+
+    .seasons-container {
+      display: flex;
+      gap: 15px;
+      padding: 0 60px 40px 60px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .seasons-container::-webkit-scrollbar { display: none; }
+
+    .season-card {
+      flex: 0 0 auto;
+      width: 180px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 160ms ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      color: #fff;
+      will-change: transform;
+    }
+
+    .season-card img {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 2 / 3;
+      object-fit: cover;
+      border-radius: 10px;
+      transition: transform 200ms ease;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .season-card:hover img { transform: translateY(-8px); }
+
+    .season-title { margin-top: 8px; font-size: 14px; font-weight: bold; }
+    .season-episodes { font-size: 12px; color: #bbb; }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      cursor: pointer;
+    }
+    .modal img {
+      max-width: 90%;
+      max-height: 90%;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(255,255,255,0.5);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* زر الإغلاق الأحمر فوق الصورة خارجها بقليل وعلى اليمين */
+    #modal-close {
+      position: fixed;
+      top: 50%;
+      right: 50%;
+      transform: translate(45vw, -45vh);
+      background: transparent;
+      border: none;
+      color: red;
+      font-size: 2.5rem;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      line-height: 1;
+      z-index: 10000;
+      padding: 0;
+      margin: 0;
+      outline: none;
+    }
+    #modal-close:hover { color: #ff4c4c; }
+
+    @media (max-width: 768px) {
+      .banner { height: 300px; padding: 20px 30px 0 30px; }
+      .banner-title { font-size: 1rem; }
+      .banner-info-wrapper { font-size: 0.6rem; }
+      .banner-button { padding: 4px 8px; font-size: 0.6rem; }
+      .summary-section { max-width: 100%; margin: 20px 30px 40px 30px; }
+      .summary-title { font-size: 1.2rem; margin-bottom: 10px; }
+      .thumbnails { padding: 10px 30px; }
+      .thumbnail { width: 110px; height: 65px; }
+      .seasons-title { margin: 20px 30px 10px 30px; font-size: 1.5rem; }
+      .seasons-container { padding: 0 30px 20px 30px; gap: 10px; }
+      .season-card { width: 140px; }
+      .season-card img { aspect-ratio: auto; height: 200px; }
+    }
+  </style>
+</head>
+<body>
+
+  <section class="banner">
+    <div class="banner-content">
+      <h1 class="banner-title">The amazing world of Gumball</h1>
+      <div class="banner-info-wrapper">
+        <div class="banner-info">2011 | رسوم متحركة، كوميديا</div>
+        <div class="banner-buttons">
+          <button class="banner-button btn-trailer" id="btn-trailer" type="button">
+            <i class="fas fa-play"></i> مشاهدة التريلر
+          </button>
+          <button class="banner-button btn-list" id="btn-list" type="button">
+            <i class="fas fa-bookmark"></i> قائمتي
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- قسم ملخص المسلسل -->
+  <section class="summary-section">
+    <h3 class="summary-title">ملخص المسلسل:</h3>
+    <p class="banner-description">
+      أهلاً بكم من جديد في إلمور، حيث قوانين الواقع مُجرد مُزحة، والحياة العائلية بعيدة كل البعد عن المألوف. سواءً كان يُحارب إمبراطورية مطاعم سريعة شريرة، أو يُواجه ذكاءً اصطناعيًا واعيًا مُغرمًا بوالدته، أو يُحاول منع الموزة جو من ارتداء البنطال، يُرافق غامبول داروين وأناييس وبقية أفراد إلمور في رحلتهم. مع قصص أكثر غرابة، وتقلبات أكثر عمقًا، وفكاهة سريالية، اضطروا لإعادة تسميته: عالم غامبول العجيب.
+    </p>
+  </section>
+
+  <section class="thumbnails" id="thumbnails">
+    <div class="thumbnail" tabindex="0" role="button" aria-label="فتح صورة 1">
+      <img src="https://iili.io/FZ8XEmJ.jpg" alt="صورة 1" loading="lazy" decoding="async" fetchpriority="low" />
+    </div>
+    <div class="thumbnail" tabindex="0" role="button" aria-label="فتح صورة 2">
+      <img src="https://iili.io/FZ8XMzv.jpg" alt="صورة 2" loading="lazy" decoding="async" fetchpriority="low" />
+    </div>
+    <div class="thumbnail" tabindex="0" role="button" aria-label="فتح صورة 3">
+      <img src="https://iili.io/FZ8Xe7n.jpg" alt="صورة 3" loading="lazy" decoding="async" fetchpriority="low" />
+    </div>
+    <div class="thumbnail" tabindex="0" role="button" aria-label="فتح صورة 4">
+      <img src="https://iili.io/FZ8XUX4.jpg" alt="صورة 4" loading="lazy" decoding="async" fetchpriority="low" />
+    </div>
+  </section>
+
+  <h2 class="seasons-title"><span class="bars">||</span> 7 مواسم</h2>
+  <section class="seasons-container" id="seasons">
+    <div class="season-card" tabindex="0" data-go="Go:S71">
+      <img src="https://iili.io/FZ3TP2V.jpg" alt="الموسم الأول" loading="lazy" decoding="async" fetchpriority="low" />
+      <div class="season-title">الموسم الأول</div>
+      <div class="season-episodes">36 حلقة</div>
+    </div>
+    <div class="season-card" tabindex="0" data-go="Go:S72">
+      <img src="https://iili.io/FZ3TrEx.jpg" alt="الموسم الثاني" loading="lazy" decoding="async" fetchpriority="low" />
+      <div class="season-title">الموسم الثاني</div>
+      <div class="season-episodes">40 حلقة</div>
+    </div>
+    <div class="season-card" tabindex="0" data-go="Go:S73">
+      <img src="https://iili.io/FZ3T4rQ.jpg" alt="الموسم الثالث" loading="lazy" decoding="async" fetchpriority="low" />
+      <div class="season-title">الموسم الثالث</div>
+      <div class="season-episodes">40 حلقة</div>
+    </div>
+    <div class="season-card" tabindex="0" data-go="Go:S74">
+      <img src="https://iili.io/FZ3TgBj.jpg" alt="الموسم الرابع" loading="lazy" decoding="async" fetchpriority="low" />
+      <div class="season-title">الموسم الرابع</div>
+      <div class="season-episodes">40 حلقة</div>
+    </div>
+    <div class="season-card" tabindex="0" data-go="Go:S75">
+      <img src="https://iili.io/FZ3YsvR.jpg" alt="الموسم الخامس" loading="lazy" decoding="async" fetchpriority="low" />
+      <div class="season-title">الموسم الخامس</div>
+      <div class="season-episodes">40 حلقة</div>
+    </div>
+    <div class="season-card" tabindex="0" data-go="Go:S76">
+      <img src="https://iili.io/FZ3YZTN.jpg" alt="الموسم السادس" loading="lazy" decoding="async" fetchpriority="low" />
+      <div class="season-title">الموسم السادس</div>
+      <div class="season-episodes">44 حلقة</div>
+    </div>
+    <div class="season-card" tabindex="0" data-go="Go:S77">
+      <img src="https://iili.io/FZ3YmCX.jpg" alt="الموسم السابع" loading="lazy" decoding="async" fetchpriority="low" />
+      <div class="season-title">الموسم السابع</div>
+      <div class="season-episodes">40 حلقة</div>
+    </div>
+  </section>
+
+  <div class="modal" id="modal" aria-hidden="true" role="dialog" aria-label="صورة مكبرة">
+    <img id="modal-img" src="" alt="صورة كبيرة" />
+    <button id="modal-close" aria-label="إغلاق" title="إغلاق" type="button">×</button>
+  </div>
+
+  <script>
+    (function () {
+      const thumbnailsContainer = document.getElementById('thumbnails');
+      const modal = document.getElementById('modal');
+      const modalImg = document.getElementById('modal-img');
+      const modalClose = document.getElementById('modal-close');
+      const seasonsContainer = document.getElementById('seasons');
+
+      function openModalWithImgSrc(src, alt) {
+        modalImg.src = src;
+        modalImg.alt = alt || 'صورة مكبرة';
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        modalClose.focus();
+      }
+
+      function closeModal() {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        modalImg.src = '';
+        modalImg.alt = '';
+        document.body.style.overflow = '';
+      }
+
+      // event delegation لأداء أفضل: فتح المودال عند pointerup
+      thumbnailsContainer.addEventListener('pointerup', (e) => {
+        const thumb = e.target.closest('.thumbnail');
+        if (!thumb) return;
+        const img = thumb.querySelector('img');
+        if (!img) return;
+        openModalWithImgSrc(img.src, img.alt);
+      });
+
+      // دعم الكيبورد لفتح (Enter / Space)
+      thumbnailsContainer.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          const thumb = e.target.closest('.thumbnail');
+          if (!thumb) return;
+          const img = thumb.querySelector('img');
+          if (!img) return;
+          e.preventDefault();
+          openModalWithImgSrc(img.src, img.alt);
+        }
+      });
+
+      // إغلاق عند النقر خارج الصورة أو على زر الإغلاق
+      modal.addEventListener('pointerup', (e) => {
+        if (e.target === modal || e.target === modalClose) {
+          closeModal();
+        }
+      });
+
+      // زر الإغلاق و Escape
+      modalClose.addEventListener('click', closeModal);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.style.display === 'flex') {
+          closeModal();
+        }
+      });
+
+      // تحسين استجابة الأزرار: تأثير بصري سريع
+      const buttons = document.querySelectorAll('button.banner-button, #btn-trailer, #btn-list');
+      buttons.forEach(btn => {
+        btn.addEventListener('pointerdown', () => btn.classList.add('pressed'));
+        btn.addEventListener('pointerup', () => btn.classList.remove('pressed'));
+        btn.addEventListener('pointercancel', () => btn.classList.remove('pressed'));
+      });
+
+      // delegation للمواسم: يقرأ attribute data-go و ينقّل المستخدم
+      seasonsContainer.addEventListener('pointerup', (e) => {
+        const card = e.target.closest('.season-card');
+        if (!card) return;
+        const go = card.getAttribute('data-go');
+        if (go) {
+          window.location.href = go;
+        }
+      });
+
+      // دعم الكيبورد لفتح روابط المواسم (Enter / Space)
+      seasonsContainer.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          const card = e.target.closest('.season-card');
+          if (!card) return;
+          const go = card.getAttribute('data-go');
+          if (go) {
+            e.preventDefault();
+            window.location.href = go;
+          }
+        }
+      });
+
+      // منع double-tap zoom على بعض الأجهزة (بحذر، passive:false)
+      let lastTouch = 0;
+      document.addEventListener('touchstart', function (e) {
+        const now = Date.now();
+        if (now - lastTouch <= 300) {
+          e.preventDefault();
+        }
+        lastTouch = now;
+      }, { passive: false });
+    })();
+  </script>
+
+</body>
+</html>

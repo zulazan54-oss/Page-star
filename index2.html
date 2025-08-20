@@ -1,0 +1,141 @@
+<!DOCTYPE html><html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>موسم 1</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: white;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 10px;
+    }
+    .search-box {
+      margin-bottom: 30px;
+    }
+    .search-box input {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+      width: 100px;
+      text-align: center;
+    }
+    .search-box button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+      background-color: orange;
+      cursor: pointer;
+      font-weight: bold;
+      margin-right: 5px;
+    }
+    .search-box button:hover {
+      background-color: #ff9900;
+    }
+    .episodes {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .btn {
+      background-color: #2a2a2a;
+      color: #ddd;
+      border: none;
+      padding: 14px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 18px;
+      transition: background-color 0.3s;
+      text-decoration: none;
+      display: block;
+    }
+    .btn:hover {
+      background-color: orange;
+      color: #111;
+    }
+  </style>
+</head>
+<body>  <h2>موسم 1</h2>  <!-- خانة البحث -->  <div class="search-box">
+    <input type="number" id="episodeNumber" min="1" max="36" placeholder="رقم الحلقة">
+    <button onclick="playEpisode()">تشغيل</button>
+  </div>  <div class="episodes" id="episodesContainer"></div>  <script>
+    // روابط الحلقات
+    const episodeLinks = [
+      "https://vk.com/video1060594069_456239397?list=ln-CInzc14ZCxXK5niWZE",
+      "https://vk.com/video1060594069_456239398?list=ln-JL1j3kZZGz5lGzz7cK",
+      "https://vk.com/video1060594069_456239399?list=ln-JDb0iHYZU0IC2sbxOM",
+      "https://vk.com/video1060594069_456239400?list=ln-JRtiuVFg36U9NPTuEI",
+      "https://vk.com/video1060594069_456239401?list=ln-G5k0516E8fzgNt266t",
+      "https://vk.com/video1060594069_456239415?list=ln-5WJXPjcVoO7WjoXjS2",
+      "https://vk.com/video1060594069_456239416?list=ln-yaSAGzkNEgkMghZ957",
+      "https://vk.com/video1060594069_456239417?list=ln-SB7XHASZv3m4pIZ4oI",
+      "https://vk.com/video1060594069_456239402?list=ln-uPOzzFhWOAQE5yEZtc",
+      "https://vk.com/video1060594069_456239418?list=ln-hZuP9vkPTNJtUlgMXW",
+      "https://vk.com/video1060594069_456239403?list=ln-77oMpTd8Sk9vJSm6Fa",
+      "https://vk.com/video1060594069_456239404?list=ln-fNOYxmGGmnQ5PYhfsB",
+      "https://vk.com/video1060594069_456239405?list=ln-rfloEhUUbDjfFmtsZo",
+      "https://vk.com/video1060594069_456239406?list=ln-jCgatA3ChLOwT3L27L",
+      "https://vk.com/video1060594069_456239407?list=ln-o4Fl7KmhFyx4TnGyjj",
+      "https://vk.com/video1060594069_456239408?list=ln-i7ofcKzENgtXpQfXAO",
+      "https://vk.com/video1060594069_456239409?list=ln-da3mkizzKpHcBN6cAN",
+      "https://vk.com/video1060594069_456239410?list=ln-zAFZZZkpAavDLl0BF8",
+      "https://vk.com/video1060594069_456239411?list=ln-LEBrbuIPtbmXsny6LR",
+      "https://vk.com/video1060594069_456239412?list=ln-A4UoZDeMmdjAPzGbUp",
+      "https://vk.com/video1060594069_456239413?list=ln-8xFZ7bgKMJLad51ZPp",
+      "https://vk.com/video1060594069_456239414?list=ln-b5o9WRW49WZnXR7vUV",
+      "https://vk.com/video1060594069_456239419?list=ln-PqdgFLS9biPahaFnwz",
+      "https://vk.com/video1060594069_456239420?list=ln-65mSiZzu82enT1uVMm",
+      "https://vk.com/video1060594069_456239421?list=ln-7aBZcfkZbFJBjMOG2l",
+      "https://vk.com/video1060594069_456239422?list=ln-qXfyG1ga4ARlk2rHNe",
+      "https://vk.com/video1060594069_456239423?list=ln-jNSLKeZbcIAW2K1T5U",
+      "https://vk.com/video1060594069_456239424?list=ln-7nB11Rne8zYf74zMCJ",
+      "https://vk.com/video1060594069_456239425?list=ln-dZ1FzzkcbOcnzqUqm4",
+      "https://vk.com/video1060594069_456239426?list=ln-WX0mgGjm46n4dqgpig",
+      "https://vk.com/video1060594069_456239427?list=ln-EvQAUOjXwWdnrnpQDQ",
+      "https://vk.com/video1060594069_456239428?list=ln-pMDnMTq3fpi0P5I5lu",
+      "https://vk.com/video1060594069_456239429?list=ln-7Wf6nA47vBgqWdprIa",
+      "https://vk.com/video1060594069_456239431?list=ln-kGt2Qntc9zrvZmOTB9",
+      "https://vk.com/video1060594069_456239432?list=ln-mTbvzyRJl5SzLcQoj7",
+      "https://vk.com/video1060594069_456239433?list=ln-EaaGogdJhx8yGsJZzR"
+    ];
+
+    // إنشاء الأزرار تلقائياً
+    const container = document.getElementById("episodesContainer");
+    episodeLinks.forEach((link, index) => {
+      const a = document.createElement("a");
+      a.className = "btn";
+      a.href = link; // href كنقطة احتياطية
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = `حلقة ${index + 1}`;
+
+      // عند النقر نمنع السلوك الافتراضي ونفتح الرابط فوراً في تبويب جديد
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        window.open(link, '_blank', 'noopener,noreferrer');
+      });
+
+      container.appendChild(a);
+    });
+
+    // وظيفة البحث
+    function playEpisode() {
+      const num = parseInt(document.getElementById("episodeNumber").value, 10);
+      if (num >= 1 && num <= episodeLinks.length) {
+        // فتح مباشر في تبويب جديد بدون أي انتظار
+        window.open(episodeLinks[num - 1], '_blank', 'noopener,noreferrer');
+      } else {
+        alert("الرجاء إدخال رقم حلقة صحيح بين 1 و 36");
+      }
+    }
+  </script></body>
+</html>
