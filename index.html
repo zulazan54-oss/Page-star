@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>نسخة تجريبية من نتفليكس</title>
+
+<!-- preconnect لتحسين وقت فتح الاتصال إلى مزوّري الصور -->
+<link rel="preconnect" href="https://iili.io" crossorigin>
+<link rel="preconnect" href="https://picsum.photos" crossorigin>
+
+<style>
+  :root{
+    --bg:#000;
+    --fg:#fff;
+    --muted:#b3b3b3;
+    --card:#141414;
+    --accent:#e50914;
+    --glass: rgba(255,255,255,0.04);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  a{color:inherit;text-decoration:none}
+  img{display:block;width:100%;height:100%;object-fit:cover}
+
+  /* Top bar */
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    background:linear-gradient(180deg, rgba(0,0,0,.9), rgba(0,0,0,.6) 60%, transparent);
+    padding:12px 16px 8px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .burger{width:26px;height:26px;display:grid;place-items:center;opacity:.9;cursor:pointer}
+  .burger span,.burger span:before,.burger span:after{
+    content:"";display:block;width:20px;height:2px;background:#fff;border-radius:2px;
+  }
+  .burger span:before{transform:translateY(-6px)}
+  .burger span:after{transform:translateY(4px)}
+  .logo{margin-left:2px;font-weight:800;letter-spacing:.06em;color:var(--accent);font-size:22px}
+  .avatar{margin-left:auto;width:28px;height:28px;border-radius:50%;overflow:hidden;border:2px solid #222;cursor:pointer}
+
+  /* Menu & side menu (kept) */
+  .menu-overlay { display:none } /* legacy */
+
+  .side-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,0.45);opacity:0;transition:opacity .22s ease;z-index:180;
+    pointer-events:none;
+  }
+  .side-backdrop.visible{opacity:1;pointer-events:auto;}
+
+  .side-menu{
+    position:fixed;top:0;left:0;height:100vh;width:280px;max-width:82vw;transform:translateX(-100%);transition:transform .22s cubic-bezier(.2,.9,.3,1);z-index:190;
+    background:linear-gradient(180deg, rgba(22,22,22,0.98), rgba(10,10,10,0.98));
+    box-shadow: 8px 0 24px rgba(0,0,0,0.6);
+    border-right:1px solid rgba(255,255,255,0.03);
+    display:flex;flex-direction:column;padding:14px 10px;
+    touch-action:pan-y;
+    will-change: transform;
+  }
+  .side-menu.open{transform:translateX(0)}
+  .side-menu .menu-header{display:flex;align-items:center;gap:10px;padding:6px 8px;margin-bottom:6px}
+  .side-menu .menu-header .logo{font-size:18px;margin:0;color:var(--accent)}
+  .side-menu nav{display:flex;flex-direction:column;gap:6px;padding-top:6px}
+  .side-menu a,.side-menu button{padding:10px 12px;border-radius:8px;color:#eaeaea;font-weight:600;text-decoration:none;display:flex;justify-content:space-between;align-items:center;background:transparent;border:0;text-align:right;cursor:pointer}
+  .side-menu a.small{font-weight:500;font-size:14px;color:var(--muted)}
+  .side-menu .spacer{flex:1}
+
+  .edge-swipe-area{position:fixed;left:0;top:0;height:100vh;width:22px;z-index:170}
+  @media (min-width:900px){ .edge-swipe-area{width:36px} }
+
+  /* Search overlay */
+  .search-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95);
+    display: none;
+    flex-direction: column;
+    padding: 20px;
+    z-index: 101;
+  }
+  .search-overlay.active { display: flex; }
+  .search-overlay input { padding: 12px; font-size: 16px; border: none; border-radius: 8px; outline: none; margin-bottom: 20px; }
+  .close-search { background: var(--accent); color: #fff; border: none; padding: 10px; border-radius: 6px; cursor: pointer; }
+
+  /* Tabs */
+  .tabs{display:flex;gap:22px;align-items:center;padding:8px 16px 10px}
+  .tab{font-size:15px;color:#ddd;opacity:.9;position:relative;padding-bottom:6px;background:transparent;border:0;cursor:default}
+  .tab.active{color:#fff;font-weight:600}
+  .tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-2px;margin:auto;height:2px;width:18px;background:#fff;border-radius:2px;}
+
+  /* Hero slider */
+  .hero-slider { display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:16px;padding:20px 0; }
+  .hero-card {
+    flex: 0 0 80%;
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    scroll-snap-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background:#111;
+    will-change: transform;
+  }
+  .hero-card img { width:100%;height:100%;object-fit:cover;display:block;position:relative;z-index:1; }
+
+  /* لتحسين الأداء: قلل استخدام الفلاتر المكلفة على العناصر غير النشطة */
+  .hero-card.active { transform: scale(1.05); box-shadow: 0 15px 40px rgba(0,0,0,0.6); z-index:2; }
+  .hero-card:not(.active) { transform: scale(0.94); opacity:0.82; } /* لا نستخدم filter:brightness هنا */
+
+  .hero-slider::-webkit-scrollbar { display: none; }
+
+  /* ظل موحد - بسيط وأرخص للرسم */
+  .hero-card::after{
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0; height: 50%;
+    z-index: 3; pointer-events: none;
+    border-bottom-left-radius: 14px; border-bottom-right-radius: 14px;
+    background: linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.0) 100%);
+  }
+
+  /* Caption overlay داخل الهيرو --- استبدلت backdrop-filter (مكلف) بخلفية شبه شفافة */
+  .hero-caption {
+    position: absolute; right: 20px; bottom: 28px; z-index: 4; max-width: 55%;
+    padding: 12px 14px; border-radius: 8px;
+    background: rgba(0,0,0,0.32);
+    color: #fff; text-align: right;
+  }
+  .hero-caption h2{margin:0;font-size:20px;font-weight:800;line-height:1.05;text-shadow: 0 6px 18px rgba(0,0,0,0.6);}
+  .hero-caption p{margin:6px 0 0;font-size:13px;color:var(--muted);line-height:1.35;text-shadow: 0 6px 18px rgba(0,0,0,0.45);}
+
+  /* Rows */
+  .row{padding:4px 0 6px}
+  .row-head{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;color:#fff}
+  .row-head h3{margin:0;font-size:20px}
+  .row-head a{font-size:14px;color:var(--muted)}
+
+  /* Scroller */
+  .scroller{display:grid;grid-auto-flow:column;grid-auto-columns:35%;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 12px 6px 16px;}
+  .thumb{background:var(--card);border-radius:8px;overflow:hidden;scroll-snap-align:start;width:100%;display:block;}
+  .thumb .img-wrap{border-radius:8px;overflow:hidden;aspect-ratio:2/3}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+
+  /* mini-hero-slider */
+  .mini-hero-slider { display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:14px;padding:14px 12px 6px 16px; }
+  .mini-hero-card { flex:0 0 24%; aspect-ratio:16/9; border-radius:12px; overflow:hidden; position:relative; scroll-snap-align:center; transition:transform .28s ease; background:#111; will-change: transform; }
+  .mini-hero-card img{width:100%;height:100%;object-fit:cover;display:block;z-index:1;position:relative;}
+  .mini-hero-card.active{ transform:scale(1.03); z-index:2;}
+  .mini-hero-card:not(.active){ transform:scale(0.98); opacity:0.86; }
+  .mini-hero-slider::-webkit-scrollbar{ display:none; }
+
+  /* بقية الأنماط (مختصرة/محفوظة) */
+  .page{display:none;padding:20px;min-height:60vh;color:var(--fg)}
+  .back-btn{display:inline-block;margin-bottom:16px;background:transparent;border:1px solid rgba(255,255,255,0.08);padding:8px 12px;border-radius:8px;color:var(--fg);cursor:pointer}
+  .page-hero{display:flex;gap:18px;align-items:flex-end;padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.6));margin-bottom:18px}
+  .page-hero .hero-art{flex:0 0 170px;border-radius:8px;overflow:hidden;height:96px}
+  .page-hero .hero-meta{flex:1;min-width:0}
+  .page-hero .hero-title{font-size:22px;font-weight:800;margin:0 0 8px}
+  .page-hero .hero-data{color:var(--muted);font-size:13px;margin-bottom:10px}
+  .page-hero .hero-desc{color:var(--muted);font-size:14px;line-height:1.35;margin-bottom:12px;display:block;max-height:60px;overflow:hidden}
+  .page-buttons{display:flex;gap:10px;align-items:center}
+  .btn-play{background:var(--fg);color:var(--bg);border:none;padding:10px 14px;border-radius:6px;font-weight:700;cursor:pointer;display:flex;gap:8px;align-items:center}
+  .btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.12);color:var(--fg);padding:8px 12px;border-radius:6px;cursor:pointer;display:flex;gap:8px;align-items:center}
+  .btn-small{padding:6px 10px;font-size:13px;border-radius:6px}
+
+  .page-section{margin:18px 0}
+  .page-section .section-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 10px;padding:0 4px}
+  .page-section .section-head h3{margin:0;font-size:18px;font-weight:700}
+  .page-section .section-head a{color:var(--muted);font-size:13px}
+
+  .bottom-nav{position:sticky;bottom:0;z-index:40;background:linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.6) 10%, rgba(0,0,0,.95) 60%);padding:10px 14px 12px}
+  .nav{background:#171717;border:1px solid #222;border-radius:20px;display:flex;justify-content:space-around;align-items:center;padding:12px 8px;gap:6px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+  .nav button{appearance:none;border:0;background:transparent;color:#cfcfcf;display:grid;gap:6px;place-items:center;font-size:11px;padding:0 4px 2px;min-width:54px;cursor:pointer}
+  .nav button.active{color:#fff}
+  .ico{width:22px;height:22px;display:block}
+  .scroller::-webkit-scrollbar{height:0}
+
+  .panel-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);opacity:0;visibility:hidden;transition:opacity .18s ease;z-index:190}
+  .panel-backdrop.visible{opacity:1;visibility:visible;}
+  .notifications-panel{position:fixed;left:0;right:0;bottom:0;max-height:78vh;background:linear-gradient(180deg, rgba(20,20,20,0.98), rgba(10,10,10,0.98));border-top-left-radius:14px;border-top-right-radius:14px;transform:translateY(110%);transition:transform .28s cubic-bezier(.22,.9,.31,1);z-index:200;box-shadow:0 -12px 30px rgba(0,0,0,0.6);overflow:hidden;display:flex;flex-direction:column}
+  .notifications-panel.open{transform:translateY(0)}
+  .notifications-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .notifications-header h3{margin:0;font-size:16px}
+  .notifications-header .actions{display:flex;gap:8px;align-items:center}
+  .notifications-header button{background:transparent;border:0;color:var(--muted);cursor:pointer;padding:8px;border-radius:8px}
+  .notifications-list{overflow:auto;padding:20px 12px;display:flex;flex-direction:column;gap:10px;min-height:120px}
+
+  @media (max-width:720px){
+    .page-hero{flex-direction:row;gap:12px}
+    .page-hero .hero-art{flex:0 0 120px;height:72px}
+    .page-hero .hero-title{font-size:18px}
+    .hero-caption{max-width:70%;right:12px;bottom:14px;padding:10px}
+    .hero-caption h2{font-size:18px}
+    .mini-hero-card { flex: 0 0 36%; }
+  }
+  @media (max-width:420px){
+    .page-hero{flex-direction:column;align-items:flex-start}
+    .page-hero .hero-art{width:100%;height:180px}
+    .hero-caption{right:12px;left:12px;max-width:none}
+    .mini-hero-card { flex: 0 0 56%; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="edge-swipe-area" id="edgeSwipeArea" aria-hidden="true"></div>
+  <div id="sideBackdrop" class="side-backdrop" aria-hidden="true"></div>
+  <aside id="sideMenu" class="side-menu" aria-hidden="true" role="dialog" aria-label="القائمة الجانبية">
+    <div class="menu-header">
+      <div class="logo">zanzulla</div>
+      <div style="margin-left:auto">
+        <button id="closeSideBtn" class="burger" aria-label="إغلاق القائمة">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M18.3 5.71L12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.71 2.88 18.3 9.18 12 2.88 5.71 4.29 4.29 10.59 10.6 16.88 4.29z"></path></svg>
+        </button>
+      </div>
+    </div>
+    <nav aria-label="روابط القايمة">
+      <button class="menu-btn">الرئيسية</button>
+      <button class="menu-btn">المسلسلات</button>
+      <button class="menu-btn">الأفلام</button>
+      <button class="menu-btn">قائمتي</button>
+      <button class="menu-btn small">قنوات وشركات</button>
+      <button class="menu-btn small">الإعدادات</button>
+    </nav>
+    <div class="spacer"></div>
+    <div style="padding:10px 12px;font-size:13px;color:var(--muted)">مستخدم: zanzulla<br>حسابك — إدارة</div>
+  </aside>
+
+  <div class="search-overlay" id="searchOverlay">
+    <input type="text" placeholder="ابحث...">
+    <button class="close-search" id="closeSearch">إغلاق</button>
+  </div>
+
+  <div class="topbar">
+    <div class="burger" id="burgerMenu" aria-label="القائمة"><span></span></div>
+    <div class="logo">zanzulla</div>
+    <div class="avatar">
+      <img src="https://picsum.photos/seed/profile/200" alt="الملف الشخصي" decoding="async" width="200" height="200"/>
+    </div>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="التبويبات">
+    <button class="tab active" type="button" aria-current="true">الرئيسية</button>
+    <button class="tab" type="button">المسلسلات</button>
+    <button class="tab" type="button">الأفلام</button>
+    <button class="tab" type="button">قائمتي</button>
+  </nav>
+
+  <main id="mainContent">
+
+  <section>
+    <div class="hero-slider" id="heroSlider">
+      <!-- الصورة الأولى تظل محمّلة فوريًا لاجل FCP -->
+      <a class="hero-card active" href="Go:O4">
+        <img src="https://iili.io/FDFUcAu.jpg" alt="صورة 1" decoding="async" fetchpriority="high" width="1600" height="900">
+        <div class="hero-caption">
+          <h2>إد إدد و إدي</h2>
+          <p>مغامرات , 1999</p>
+        </div>
+      </a>
+
+      <!-- باقي صور الهيرو مؤجلة: data-src وسيقوم المراقب بتحميلها عند الاقتراب -->
+      <a class="hero-card" href="Go:O3">
+        <img data-src="https://iili.io/FDFSmyg.jpg" alt="صورة 2" decoding="async">
+        <div class="hero-caption">
+          <h2>بسبس بوبي</h2>
+          <p>كوميديا , 1998</p>
+        </div>
+      </a>
+      <a class="hero-card" href="Go:O5">
+        <img data-src="https://iili.io/FDFSDa1.jpg" alt="صورة 3" decoding="async">
+        <div class="hero-caption">
+          <h2>موتشا لوتشا</h2>
+          <p>مصارعة , 2002</p>
+        </div>
+      </a>
+      <a class="hero-card" href="Go:O2">
+        <img data-src="https://iili.io/FDFUNAg.jpg" alt="صورة 4" decoding="async">
+        <div class="hero-caption">
+          <h2>فلاب جاك</h2>
+          <p>مغامرات , 2008</p>
+        </div>
+      </a>
+      <a class="hero-card" href="Go:O1">
+        <img data-src="https://iili.io/FDFUxtf.jpg" alt="صورة 5" decoding="async">
+        <div class="hero-caption">
+          <h2>عالم غامبول المدهش</h2>
+          <p>كوميديا ,  2011</p>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- أمثلة على صفوف: جعلت صور السلايدر الصغيرة كلها مؤجلة -->
+  <section class="row">
+    <div class="row-head">
+      <h3>أحدث المسلسلات : نزلت اليوم</h3>
+      <a class="no-nav" href="#" aria-disabled="true">عرض الكل</a>
+    </div>
+    <div class="scroller">
+      <a class="thumb" href="Go:O5"><div class="img-wrap"><img data-src="https://iili.io/FDB8Jxs.jpg" alt="مسلسل 1" decoding="async"></div></a>
+      <a class="thumb" href="Go:O4"><div class="img-wrap"><img data-src="https://iili.io/FDBvLiv.jpg" alt="مسلسل 2" decoding="async"></div></a>
+      <a class="thumb" href="Go:O3"><div class="img-wrap"><img data-src="https://iili.io/FDBvixa.jpg" alt="مسلسل 3" decoding="async"></div></a>
+      <a class="thumb" href="Go:O1"><div class="img-wrap"><img data-src="https://iili.io/FDBvZfR.jpg" alt="مسلسل 4" decoding="async"></div></a>
+      <a class="thumb" href="Go:O2"><div class="img-wrap"><img data-src="https://iili.io/FDaQV2e.jpg" alt="مسلسل 5" decoding="async"></div></a>
+    </div>
+  </section>
+
+  <section class="row">
+    <div class="row-head">
+      <h3>أحدث الأفلام: نزلت اليوم</h3>
+      <a class="no-nav" href="#" aria-disabled="true">عرض الكل</a>
+    </div>
+    <div class="scroller">
+      <a class="thumb" href="Go:G22"><div class="img-wrap"><img data-src="https://iili.io/FDCBvB1.jpg" alt="فيلم 1" decoding="async"></div></a>
+      <a class="thumb" href="Go:G22"><div class="img-wrap"><img data-src="https://iili.io/FDCBNIV.jpg" alt="فيلم 2" decoding="async"></div></a>
+      <a class="thumb" href="Go:G22"><div class="img-wrap"><img data-src="https://iili.io/FDCBYml.jpg" alt="فيلم 3" decoding="async"></div></a>
+      <a class="thumb" href="Go:G22"><div class="img-wrap"><img data-src="https://iili.io/FDCqgb2.jpg" alt="فيلم 4" decoding="async"></div></a>
+    </div>
+  </section>
+
+  <section class="row">
+    <div class="row-head">
+      <h3>الشبكات الشعبية:</h3>
+      <a class="no-nav" href="#" aria-disabled="true">عرض الكل</a>
+    </div>
+
+    <div class="mini-hero-slider" aria-label="شبكات شعبية - شريط">
+      <div class="mini-hero-card"><img data-src="https://iili.io/FDfmqZl.jpg" alt="شبكة 1" decoding="async"></div>
+      <div class="mini-hero-card"><img data-src="https://iili.io/FDfmKuf.jpg" alt="شبكة 2" decoding="async"></div>
+      <div class="mini-hero-card"><img data-src="https://iili.io/FDfmzF9.jpg" alt="شبكة 3" decoding="async"></div>
+      <div class="mini-hero-card"><img data-src="https://iili.io/FDfmRuj.jpg" alt="شبكة 4" decoding="async"></div>
+    </div>
+  </section>
+
+  <section class="row">
+    <div class="row-head">
+      <h3>شركات مشهورة:</h3>
+      <a class="no-nav" href="#" aria-disabled="true">عرض الكل</a>
+    </div>
+
+    <div class="mini-hero-slider" aria-label="شركات مشهورة - شريط">
+      <div class="mini-hero-card"><img data-src="https://iili.io/FDqYFZG.jpg" alt="شركة 1" decoding="async"></div>
+      <div class="mini-hero-card"><img data-src="https://iili.io/FDqYHvt.jpg" alt="شركة 2" decoding="async"></div>
+      <div class="mini-hero-card"><img data-src="https://iili.io/FDqY3js.jpg" alt="شركة 3" decoding="async"></div>
+      <div class="mini-hero-card"><img data-src="https://iili.io/FDqY9aI.jpg" alt="شركة 4" decoding="async"></div>
+    </div>
+  </section>
+
+  <section class="row">
+    <div class="row-head">
+      <h3>كوميكس:</h3>
+      <a class="no-nav" href="#" aria-disabled="true">عرض الكل</a>
+    </div>
+    <div class="scroller">
+      <a class="thumb" href="#"><div class="img-wrap"><img data-src="https://iili.io/FDqp7yu.jpg" alt="كوميك 1" decoding="async"></div></a>
+      <a class="thumb" href="#"><div class="img-wrap"><img data-src="https://iili.io/FDqp5ve.jpg" alt="كوميك 2" decoding="async"></div></a>
+      <a class="thumb" href="#"><div class="img-wrap"><img data-src="https://iili.io/FDqyuov.png" alt="كوميك 3" decoding="async"></div></a>
+      <a class="thumb" href="#"><div class="img-wrap"><img data-src="https://iili.io/FDqpG6B.jpg" alt="كوميك 4" decoding="async"></div></a>
+    </div>
+  </section>
+
+  </main>
+
+  <div id="panelBackdrop" class="panel-backdrop" aria-hidden="true"></div>
+
+  <aside id="notificationsPanel" class="notifications-panel" aria-hidden="true" role="dialog" aria-label="الإشعارات">
+    <div class="notifications-header">
+      <h3>الإشعارات</h3>
+      <div class="actions">
+        <button id="clearNotifications" title="مسح الكل">مسح الكل</button>
+        <button id="closeNotifications" aria-label="إغلاق">إغلاق</button>
+      </div>
+    </div>
+
+    <div class="notifications-list" id="notificationsList">
+      <div style="padding:20px;text-align:center;color:var(--muted);">لا توجد إشعارات</div>
+    </div>
+  </aside>
+
+  <div class="bottom-nav">
+    <div class="nav" role="navigation" aria-label="القائمة السفلية">
+      <button class="active" aria-label="الرئيسية">
+        <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3z"></path></svg>
+        <span>الرئيسية</span>
+      </button>
+
+      <button aria-label="بحث" id="searchBtn">
+        <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.5 21.5 20 15.5 14zM9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
+        <span>بحث</span>
+      </button>
+
+      <button aria-label="قائمتي">
+        <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+        <span>قائمتي</span>
+      </button>
+
+      <button aria-label="الإشعارات" id="notificationsBtn">
+        <svg class="ico" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5S10.5 3.17 10.5 4v.68C7.63 5.36 6 7.92 6 11v5l-1.99 2H20l-2-2z"></path>
+        </svg>
+        <span>الإشعارات</span>
+      </button>
+
+      <button aria-label="التنزيلات">
+        <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M5 20h14v-2H5v2zM12 2l-5.5 6h4v6h3V8h4L12 2z"></path></svg>
+        <span>الت تنزيلات</span>
+      </button>
+    </div>
+  </div>
+
+<!-- ===================== خفيف: lazy loader & deferred init ===================== -->
+<script>
+/* 1) Lazy-image loader: يبدّل data-src -> src حين تقترب الصورة من الـ viewport */
+(function(){
+  const imgs = Array.from(document.querySelectorAll('img[data-src]'));
+  if(!imgs.length) return;
+
+  function loadImg(img){
+    if(!img) return;
+    img.setAttribute('src', img.getAttribute('data-src'));
+    img.removeAttribute('data-src');
+    // توفر تحميل كسول للمتصفحات القديمة
+    try{ img.setAttribute('loading','lazy'); } catch(e){}
+  }
+
+  if('IntersectionObserver' in window){
+    const io = new IntersectionObserver((entries, obs) => {
+      entries.forEach(ent => {
+        if(ent.isIntersecting){
+          loadImg(ent.target);
+          obs.unobserve(ent.target);
+        }
+      });
+    }, {rootMargin: '200px 0px', threshold: 0.01});
+
+    imgs.forEach(i => io.observe(i));
+  } else {
+    // fallback بسيط: حمّل بعد تأخير
+    setTimeout(()=> imgs.forEach(loadImg), 400);
+  }
+})();
+
+/* 2) Deferred init: ننقل أجزاء التهيئة غير الحرجة إلى وقت فراغ المعالج */
+function initNonCritical(){
+  // ---- existing nav/tab bindings (lightweight) ----
+  document.querySelectorAll('.nav button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // Search overlay
+  const searchBtn = document.getElementById('searchBtn');
+  const searchOverlay = document.getElementById('searchOverlay');
+  const closeSearch = document.getElementById('closeSearch');
+  if (searchBtn) searchBtn.addEventListener('click', ()=> searchOverlay.classList.add('active'));
+  if (closeSearch) closeSearch.addEventListener('click', ()=> searchOverlay.classList.remove('active'));
+
+  // Notifications panel
+  const notificationsBtn = document.getElementById('notificationsBtn');
+  const notificationsPanel = document.getElementById('notificationsPanel');
+  const panelBackdrop = document.getElementById('panelBackdrop');
+  const closeNotifications = document.getElementById('closeNotifications');
+  const clearNotifications = document.getElementById('clearNotifications');
+  const notificationsList = document.getElementById('notificationsList');
+
+  function openNotifications(){
+    panelBackdrop.classList.add('visible');
+    panelBackdrop.setAttribute('aria-hidden','false');
+    notificationsPanel.classList.add('open');
+    notificationsPanel.setAttribute('aria-hidden','false');
+    document.body.style.overscrollBehavior = 'none';
+  }
+  function closeNotificationsPanel(){
+    panelBackdrop.classList.remove('visible');
+    panelBackdrop.setAttribute('aria-hidden','true');
+    notificationsPanel.classList.remove('open');
+    notificationsPanel.setAttribute('aria-hidden','true');
+    document.body.style.overscrollBehavior = '';
+  }
+  if (notificationsBtn) {
+    notificationsBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(notificationsPanel.classList.contains('open')) closeNotificationsPanel();
+      else openNotifications();
+    });
+  }
+  if (closeNotifications) closeNotifications.addEventListener('click', closeNotificationsPanel);
+  if (panelBackdrop) panelBackdrop.addEventListener('click', closeNotificationsPanel);
+  if (clearNotifications) clearNotifications.addEventListener('click', ()=>{
+    while (notificationsList.firstChild) notificationsList.removeChild(notificationsList.firstChild);
+    const empty = document.createElement('div');
+    empty.style.padding = '20px';
+    empty.style.textAlign = 'center';
+    empty.style.color = 'var(--muted)';
+    empty.textContent = 'لا توجد إشعارات';
+    notificationsList.appendChild(empty);
+  });
+
+  // Prevent default on inert links/buttons
+  document.querySelectorAll('a.no-nav').forEach(a=>a.addEventListener('click', e=>e.preventDefault()));
+  document.querySelectorAll('.menu-btn').forEach(b=>b.addEventListener('click', e=>e.preventDefault()));
+
+  // Tabs navigation map (kept)
+  (function setupTopTabsNavigation() {
+    const navMap = { "المسلسلات": "Go:M2", "الأفلام": "Go:M3", "قائمتي": "Go:M4" };
+    const tabs = Array.from(document.querySelectorAll('.tabs .tab'));
+    tabs.forEach(tab => {
+      const text = (tab.innerText || tab.textContent || '').trim();
+      if (navMap[text]) {
+        tab.addEventListener('click', function (e) {
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          try { window.location.href = navMap[text]; } catch (err) { try { window.open(navMap[text], '_self'); } catch (e) {} }
+        });
+      }
+    });
+  })();
+}
+
+/* 3) Heavy interactions: side menu drag + slider active update (rAF) */
+function initHeavy() {
+  // slider active-card behavior (كما في ملفك لكن نربطه هنا)
+  document.querySelectorAll('.hero-slider, .mini-hero-slider').forEach(slider => {
+    const cardSelector = slider.classList.contains('hero-slider') ? '.hero-card' : '.mini-hero-card';
+    const cards = Array.from(slider.querySelectorAll(cardSelector));
+    if(!cards.length) return;
+    let ticking = false;
+    function updateActive() {
+      ticking = false;
+      const center = slider.scrollLeft + slider.offsetWidth / 2;
+      let closest = null; let closestDist = Infinity;
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+        const dist = Math.abs(center - cardCenter);
+        if (dist < closestDist) { closestDist = dist; closest = card; }
+      }
+      cards.forEach(card => card.classList.remove('active'));
+      if (closest) closest.classList.add('active');
+    }
+    function requestUpdate() {
+      if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
+    }
+    slider.addEventListener('scroll', requestUpdate, {passive:true});
+    window.addEventListener('resize', requestUpdate, {passive:true});
+    requestUpdate();
+  });
+
+  // Side menu drag implementation (مُختصر ومُعاد استخدامه)
+  (function setupSideMenu(){
+    const sideBackdrop = document.getElementById('sideBackdrop');
+    const sideMenu = document.getElementById('sideMenu');
+    const closeSideBtn = document.getElementById('closeSideBtn');
+    const edgeSwipeArea = document.getElementById('edgeSwipeArea');
+    const burgerMenu = document.getElementById('burgerMenu');
+    function menuWidth(){ return sideMenu? Math.min(280, window.innerWidth * 0.82):280; }
+    function openSideMenuLocal(){
+      sideMenu.classList.add('open');
+      sideBackdrop.classList.add('visible');
+      sideMenu.setAttribute('aria-hidden','false');
+      sideBackdrop.setAttribute('aria-hidden','false');
+      document.body.style.overscrollBehavior = 'none';
+    }
+    function closeSideMenuLocal(){
+      sideMenu.classList.remove('open');
+      sideBackdrop.classList.remove('visible');
+      sideMenu.setAttribute('aria-hidden','true');
+      sideBackdrop.setAttribute('aria-hidden','true');
+      document.body.style.overscrollBehavior = '';
+      sideMenu.style.transform = ''; sideBackdrop.style.opacity = ''; sideBackdrop.style.pointerEvents = '';
+    }
+    if(burgerMenu) burgerMenu.addEventListener('click', function(e){ e.stopPropagation(); if (sideMenu.classList.contains('open')) closeSideMenuLocal(); else openSideMenuLocal(); });
+    if(closeSideBtn) closeSideBtn.addEventListener('click', closeSideMenuLocal);
+    if(sideBackdrop) sideBackdrop.addEventListener('click', closeSideMenuLocal);
+
+    // lightweight drag as in الأصلي (لم أغير المنطق كثيراً)
+    let touching=false, startX=0, currentX=0, targetTranslate=0, rafId=null;
+    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+    function scheduleFrame(){
+      if(rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        sideMenu.style.transform = `translateX(${targetTranslate}px)`;
+        const pct = 1 - Math.abs(targetTranslate) / menuWidth();
+        const opacity = clamp(0.45 * pct, 0, 0.45);
+        sideBackdrop.style.opacity = String(opacity);
+        sideBackdrop.style.pointerEvents = (opacity > 0.02) ? 'auto' : 'none';
+      });
+    }
+    function onStart(clientX){
+      touching = true; startX = clientX; currentX = clientX;
+      sideBackdrop.classList.add('visible'); sideBackdrop.setAttribute('aria-hidden','false'); sideMenu.setAttribute('aria-hidden','false');
+      if (!sideMenu.classList.contains('open')) targetTranslate = -menuWidth();
+      else targetTranslate = 0;
+      sideMenu.style.transform = `translateX(${targetTranslate}px)`;
+    }
+    function onMove(clientX){
+      if(!touching) return; currentX = clientX;
+      const dx = currentX - startX;
+      if (sideMenu.classList.contains('open')) targetTranslate = clamp(Math.min(0, dx), -menuWidth(), 0);
+      else targetTranslate = clamp(-menuWidth() + Math.min(menuWidth(), dx), -menuWidth(), 0);
+      scheduleFrame();
+    }
+    function onEnd(){
+      if(!touching) return; touching=false;
+      const dx = currentX - startX; const threshold = menuWidth() * 0.35; const opened = sideMenu.classList.contains('open');
+      if (opened){ if (dx < -threshold) closeSideMenuLocal(); else { openSideMenuLocal(); sideMenu.style.transform=''; sideBackdrop.style.opacity=''; sideBackdrop.style.pointerEvents=''; } }
+      else { if (dx > threshold) { openSideMenuLocal(); sideMenu.style.transform=''; sideBackdrop.style.opacity=''; sideBackdrop.style.pointerEvents=''; } else closeSideMenuLocal(); }
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    }
+
+    document.addEventListener('touchstart', function(e){ if(e.touches.length!==1) return; const t=e.touches[0]; const withinEdge = t.clientX<=32; if(withinEdge || (sideMenu && sideMenu.classList.contains('open') && t.clientX <= menuWidth())) onStart(t.clientX); }, {passive:true});
+    document.addEventListener('touchmove', function(e){ if(!touching) return; onMove(e.touches[0].clientX); }, {passive:true});
+    document.addEventListener('touchend', onEnd);
+    let mouseDown=false;
+    document.addEventListener('mousedown', function(e){ if(e.button!==0) return; const withinEdge = e.clientX<=20; if(withinEdge || (sideMenu && sideMenu.classList.contains('open') && e.clientX <= menuWidth())) { mouseDown=true; onStart(e.clientX); e.preventDefault(); } });
+    document.addEventListener('mousemove', function(e){ if(!mouseDown) return; onMove(e.clientX); });
+    document.addEventListener('mouseup', function(){ if(!mouseDown) return; mouseDown=false; onEnd(); });
+    if(edgeSwipeArea){ edgeSwipeArea.addEventListener('mouseenter', ()=>{ edgeSwipeArea.style.cursor='pointer'; }); edgeSwipeArea.addEventListener('click', (e)=>{ e.stopPropagation(); openSideMenuLocal(); }); }
+  })();
+}
+
+// طلب التهيئة: ضع الأجزاء غير الحرجة في وقت فراغ المتصفح
+if('requestIdleCallback' in window){
+  requestIdleCallback(function(){ initNonCritical(); initHeavy(); }, {timeout: 600});
+} else {
+  setTimeout(function(){ initNonCritical(); initHeavy(); }, 250);
+}
+</script>
+
+<!-- تحسين: اضفت تعليق للـ noscript fallback لتحميل الصور لو تعطلت الـ JS -->
+<noscript>
+  <!-- في حال تعطّل JS، المتصفّح سيحمل كل الصور عبر src عادي -->
+</noscript>
+
+</body>
+</html>
